@@ -38,7 +38,7 @@ extension KDF {
         ///    - maxMemory: The maximum amount of memory allowed to use for key derivation. If not provided, the default value is computed for the provided parameters.
         /// - Returns: The derived symmetric key.
         public static func deriveKey<Passphrase: DataProtocol, Salt: DataProtocol>(from password: Passphrase, salt: Salt, outputByteCount: Int, rounds: Int, blockSize: Int, parallelism: Int, maxMemory: Int? = nil) throws -> SymmetricKey {
-            return try BackingScrypt.deriveKey(from: password, salt: salt, outputByteCount: outputByteCount, rounds: rounds, blockSize: blockSize, parallelism: parallelism)
+            return try BackingScrypt.deriveKey(from: password, salt: salt, outputByteCount: outputByteCount, rounds: rounds, blockSize: blockSize, parallelism: parallelism, maxMemory: maxMemory)
         }
     }
 }

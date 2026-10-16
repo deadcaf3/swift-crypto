@@ -81,12 +81,20 @@ internal struct BoringSSLScrypt {
         parallelism: Int,
         maxMemory: Int? = nil
     ) throws -> SymmetricKey {
+        guard outputByteCount >= 0, rounds > 0, blockSize > 0, parallelism > 0 else {
+            throw CryptoKitError.incorrectParameterSize
+        }
+
         // This should be SecureBytes, but we can't use that here.
         var derivedKeyData = Data(count: outputByteCount)
 
         // This computes the maximum amount of memory that will be used by the scrypt algorithm with an additional memory page to spare. This value will be used by the BoringSSL as the memory limit for the algorithm.
+        // BoringSSL allocates 128 * blockSize * (rounds + parallelism + 1) bytes.
         // An additional memory page is added to the computed value (using POSIX specification) to ensure that the memory limit is not too tight.
-        let maxMemory = maxMemory ?? (128 * rounds * blockSize * parallelism + getPageSize())
+        let maxMemory = try maxMemory ?? Self.requiredMemory(rounds: rounds, blockSize: blockSize, parallelism: parallelism)
+        guard maxMemory >= 0 else {
+            throw CryptoKitError.incorrectParameterSize
+        }
 
         let result = derivedKeyData.withUnsafeMutableBytes { derivedKeyBytes -> Int32 in
             let saltBytes: ContiguousBytes = salt.regions.count == 1 ? salt.regions.first! : Array(salt)
@@ -115,5 +123,17 @@ internal struct BoringSSLScrypt {
         }
 
         return SymmetricKey(data: derivedKeyData)
+    }
+
+    private static func requiredMemory(rounds: Int, blockSize: Int, parallelism: Int) throws -> Int {
+        let (blocks, blocksOverflow) = rounds.addingReportingOverflow(parallelism)
+        let (blocksPlusOne, plusOneOverflow) = blocks.addingReportingOverflow(1)
+        let (blockBytes, blockBytesOverflow) = blockSize.multipliedReportingOverflow(by: 128)
+        let (total, totalOverflow) = blockBytes.multipliedReportingOverflow(by: blocksPlusOne)
+        let (withPage, pageOverflow) = total.addingReportingOverflow(getPageSize())
+        guard !(blocksOverflow || plusOneOverflow || blockBytesOverflow || totalOverflow || pageOverflow) else {
+            throw CryptoKitError.incorrectParameterSize
+        }
+        return withPage
     }
 }
