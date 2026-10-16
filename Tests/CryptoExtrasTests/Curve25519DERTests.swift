@@ -64,6 +64,29 @@ final class Curve25519DERTests: XCTestCase {
         XCTAssertThrowsError(try Curve25519.KeyAgreement.PublicKey(derRepresentation: invalidDER))
     }
 
+    func testPrivateKeyWithMismatchedAlgorithmThrows() throws {
+        let signingKey = Curve25519.Signing.PrivateKey()
+        let keyAgreementKey = Curve25519.KeyAgreement.PrivateKey()
+
+        XCTAssertThrowsError(try Curve25519.Signing.PrivateKey(derRepresentation: keyAgreementKey.derRepresentation))
+        XCTAssertThrowsError(try Curve25519.Signing.PrivateKey(pemRepresentation: keyAgreementKey.pemRepresentation))
+        XCTAssertThrowsError(try Curve25519.KeyAgreement.PrivateKey(derRepresentation: signingKey.derRepresentation))
+        XCTAssertThrowsError(try Curve25519.KeyAgreement.PrivateKey(pemRepresentation: signingKey.pemRepresentation))
+    }
+
+    func testPrivateKeyWithAlgorithmParametersThrows() throws {
+        // Ed25519 PKCS#8 with NULL parameters, which RFC 8410 forbids
+        let derBytes: [UInt8] = [
+            0x30, 0x30, 0x02, 0x01, 0x00, 0x30, 0x07, 0x06, 0x03, 0x2b, 0x65, 0x70,
+            0x05, 0x00, 0x04, 0x22, 0x04, 0x20, 0x3f, 0x10, 0x52, 0x03, 0xb4, 0x06,
+            0x87, 0x0c, 0x51, 0x71, 0xfa, 0xdc, 0x8f, 0x96, 0xbd, 0x2a, 0x5f, 0x42,
+            0xac, 0x5c, 0xb9, 0x5b, 0x27, 0x4e, 0xf0, 0x06, 0xe5, 0x61, 0x6a, 0x12,
+            0x00, 0xa5,
+        ]
+
+        XCTAssertThrowsError(try Curve25519.Signing.PrivateKey(derRepresentation: derBytes))
+    }
+
     func testImportOpenSSLSigningPrivateKeyDER() throws {
         // DER extracted from an OpenSSL-generated Ed25519 PKCS#8 PEM
         let derBytes: [UInt8] = [
