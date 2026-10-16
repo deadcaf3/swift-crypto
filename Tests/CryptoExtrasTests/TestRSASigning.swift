@@ -1081,6 +1081,16 @@ final class TestRSASigning: XCTestCase {
         )
     }
 
+    func testConstructKeyFromRSANumbersWithEvenModulusThrows() throws {
+        // An even modulus has no Montgomery context, so prime recovery must throw rather than crash.
+        var n = [UInt8](repeating: 0xA7, count: 256)
+        n[255] = 0x02
+
+        XCTAssertThrowsError(
+            try _RSA.Signing.PrivateKey._createFromNumbers(n: n, e: [3] as [UInt8], d: [3] as [UInt8])
+        )
+    }
+
     func testExtractPrimeFactorsGivesUpWhenEveryBaseIsTrivial() throws {
         // n = 7 is prime and 3 mod 4, and e * d - 1 == n - 1, so by Euler's criterion
         // g^((n - 1) / 2) is 1 or n - 1 for every base g. The attempt limit must still apply.

@@ -125,4 +125,13 @@ final class FiniteFieldArithmeticTests: XCTestCase {
             }
         }
     }
+
+    func testPowWithUnsupportedModulusThrows() throws {
+        for m: ArbitraryPrecisionInteger in [0, 4] {
+            let ff = try FiniteFieldArithmeticContext(fieldSize: m)
+            XCTAssertThrowsError(try ff.pow(1, 2), "mod \(m)")
+            XCTAssertThrowsError(try ff.pow(secret: 0, 2), "mod \(m)")
+            XCTAssertThrowsError(try ff.pow(secret: 0, secret: 2), "mod \(m)")
+        }
+    }
 }

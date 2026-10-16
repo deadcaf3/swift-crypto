@@ -285,11 +285,11 @@ extension FiniteFieldArithmeticContext {
         var result = ArbitraryPrecisionInteger()
 
         guard
-            result.withUnsafeMutableBignumPointer({ resultPtr in
-                a.withUnsafeBignumPointer { aPtr in
-                    b.withUnsafeBignumPointer { bPtr in
-                        self.fieldSize.withUnsafeBignumPointer { modPtr in
-                            self.withUnsafeBN_MONT_CTX { montCtxPtr in
+            try result.withUnsafeMutableBignumPointer({ resultPtr in
+                try a.withUnsafeBignumPointer { aPtr in
+                    try b.withUnsafeBignumPointer { bPtr in
+                        try self.fieldSize.withUnsafeBignumPointer { modPtr in
+                            try self.withUnsafeBN_MONT_CTX { montCtxPtr in
                                 method(resultPtr, aPtr, bPtr, modPtr, self.bnCtx, montCtxPtr)
                             }
                         }
@@ -307,12 +307,13 @@ extension FiniteFieldArithmeticContext {
     fileprivate func withUnsafeBN_MONT_CTX<T>(
         _ body: (OpaquePointer) throws -> T
     )
-        rethrows -> T
+        throws -> T
     {
         try self.fieldSize.withUnsafeBignumPointer { modPtr in
-            // We force unwrap here because this call can only fail if the allocator is broken, and if
-            // the allocator fails we don't have long to live anyway.
-            let montCtx = CCryptoBoringSSL_BN_MONT_CTX_new_for_modulus(modPtr, self.bnCtx)!
+            // This fails for an even, zero, or negative modulus, which may come from untrusted input.
+            guard let montCtx = CCryptoBoringSSL_BN_MONT_CTX_new_for_modulus(modPtr, self.bnCtx) else {
+                throw CryptoBoringWrapperError.internalBoringSSLError()
+            }
             defer { CCryptoBoringSSL_BN_MONT_CTX_free(montCtx) }
             return try body(montCtx)
         }
